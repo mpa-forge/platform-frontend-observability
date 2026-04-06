@@ -1,0 +1,41 @@
+---
+schema: spec-driven
+
+context: |
+  Repository: platform-frontend-observability
+  Role: shared frontend observability package repository for browser
+  applications in the platform blueprint.
+  Stack: Bun 1.3, Node.js 24, TypeScript package baseline, OpenSpec for
+  canonical behavior changes.
+  Shared defaults: GCP is the cloud baseline, frontend delivery is CDN-first,
+  and frontend-web is the first expected consumer.
+  Current state: the repo is bootstrapped but P3-T03A implementation has not
+  started yet.
+  Documentation rule: OpenSpec specs are the canonical source for behavior
+  requirements; README and docs/ files are lightweight repo guidance.
+  Spec modeling rule: prefer capability-sized specs for package bootstrap,
+  consumer contract, browser telemetry initialization, and correlation helpers.
+
+rules:
+  proposal:
+    - Keep proposals focused on one reusable frontend observability capability
+      at a time.
+    - Make the first consumer impact on frontend-web explicit when a proposal
+      affects integration contracts.
+  design:
+    - Preserve the Bun/TypeScript package baseline and shared repo entrypoints
+      unless the change explicitly intends to alter them.
+    - Call out any implications for frontend-web, platform-blueprint-specs, or
+      provider-side observability contracts.
+  specs:
+    - Write normative requirements using SHALL or MUST on the first
+      requirement line so they validate cleanly with OpenSpec.
+    - Treat OpenSpec as the canonical behavior contract and avoid large
+      narrative duplication.
+    - Do not spec browser observability behavior that is not yet implemented in
+      this repository.
+  tasks:
+    - Keep tasks small, dependency-ordered, and focused on this repository
+      unless cross-repo coordination is essential.
+    - Include archive or sync steps when a change is only complete after the
+      canonical spec is updated.
