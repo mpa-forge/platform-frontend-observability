@@ -1,14 +1,17 @@
 # platform-frontend-observability
 
 Shared frontend observability package repository for the platform blueprint.
+The package is the platform-facing frontend observability contract and is
+implemented on top of the Grafana Faro Web SDK.
 
 ## Current Scope
 
 This repository hosts the shared frontend observability package for browser
 applications in the platform blueprint.
 
-The first deliverable is a reusable runtime plus optional React and
-React Router helpers consumed first by `frontend-web`.
+The current deliverable is a reusable runtime plus optional React and React
+Router helpers consumed first by `frontend-web`, with Grafana Faro providing
+the underlying telemetry engine behind the package-owned wrapper.
 
 ## Structure
 
@@ -19,7 +22,8 @@ React Router helpers consumed first by `frontend-web`.
 Primary package entrypoints:
 
 - `@mpa-forge/platform-frontend-observability`: framework-agnostic runtime,
-  config normalization, request correlation, and Web Vitals helpers
+  config normalization, request correlation, and Web Vitals helpers over a
+  Faro-backed implementation
 - `@mpa-forge/platform-frontend-observability/react`: optional React provider
   and hooks
 - `@mpa-forge/platform-frontend-observability/react-router`: optional React
@@ -66,6 +70,8 @@ Bootstrap installs the pinned Bun dependencies and Python tooling for hooks.
   helpers.
 - The repo commits `.npmrc` scope mapping for GitHub Packages. Publishing and
   install auth are provided through `GITHUB_PACKAGES_TOKEN`.
+- Consuming applications depend on the package contract, not on Grafana Faro
+  initialization APIs directly.
 
 ## Lint and Format
 
@@ -90,3 +96,5 @@ Package integration notes:
 - OpenSpec initialized
 - `P3-T03A` runtime scaffold implemented and ready for `frontend-web`
   consumption work in `P3-T03B`
+- runtime implementation now routes enabled telemetry through Grafana Faro while
+  keeping platform-owned normalization and adapter contracts

@@ -1,4 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const faroClientMock = vi.hoisted(() => {
+  const client = {
+    setUserContext: vi.fn(),
+    trackPageView: vi.fn(),
+    captureError: vi.fn(),
+    reportWebVital: vi.fn(),
+  };
+
+  return {
+    client,
+    createFaroClient: vi.fn(() => client),
+  };
+});
+
+vi.mock("./internal/faro-client", () => ({
+  createFaroClient: faroClientMock.createFaroClient,
+}));
 
 import {
   FRONTEND_OBSERVABILITY_HEADER_NAMES,
@@ -25,6 +43,13 @@ function createTestRuntime() {
 }
 
 describe("frontend observability runtime", () => {
+  beforeEach(() => {
+    faroClientMock.createFaroClient.mockClear();
+    Object.values(faroClientMock.client).forEach((mockFn) =>
+      mockFn.mockReset(),
+    );
+  });
+
   it("returns a safe no-op runtime when disabled", () => {
     const runtime = createFrontendObservability({
       app: {
@@ -39,6 +64,7 @@ describe("frontend observability runtime", () => {
     runtime.reportWebVital({ name: "LCP", value: 1200 });
 
     expect(runtime.isEnabled).toBe(false);
+    expect(faroClientMock.createFaroClient).not.toHaveBeenCalled();
     expect(runtime.getMetadata()).toMatchObject({
       appName: "frontend-web",
       environment: "local",
@@ -63,13 +89,13 @@ describe("frontend observability runtime", () => {
         },
         ingest: {
           endpoint: "https://example.test",
-          headers: { Authorization: "secret" },
+          apiKey: "secret",
         } as never,
       }),
     ).toThrow(/must not include browser-held secrets/i);
   });
 
-  it("emits page views, errors, web vitals, and request correlation metadata", () => {
+  it("emits events and delegates normalized telemetry to the Faro wrapper", () => {
     const { emit, runtime } = createTestRuntime();
 
     runtime.setUserContext({
@@ -93,6 +119,7 @@ describe("frontend observability runtime", () => {
       value: 1200,
       rating: "good",
     });
+    runtime.clearUserContext();
 
     const requestContext = runtime.createRequestContext({
       route: "/profile",
@@ -113,6 +140,55 @@ describe("frontend observability runtime", () => {
         displayName: "Casey Example",
       },
     });
+    expect(faroClientMock.createFaroClient).toHaveBeenCalledWith(
+      {
+        app: {
+          name: "frontend-web",
+          environment: "rc",
+          release: "2026.04.06",
+        },
+        ingest: undefined,
+        resourceAttributes: undefined,
+      },
+      null,
+    );
+    expect(faroClientMock.client.setUserContext).toHaveBeenNthCalledWith(1, {
+      kind: "member",
+      userId: "user-1",
+      displayName: "Casey Example",
+      isAuthenticated: true,
+    });
+    expect(faroClientMock.client.trackPageView).toHaveBeenCalledWith(
+      {
+        path: "/profile",
+        name: "Current User Profile",
+        routeTemplate: "/",
+        attributes: undefined,
+        referrer: undefined,
+        title: undefined,
+      },
+      expect.any(Number),
+    );
+    expect(faroClientMock.client.captureError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Error",
+        message: "frontend exploded",
+        route: "/profile",
+      }),
+      expect.any(Number),
+    );
+    expect(faroClientMock.client.reportWebVital).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "LCP",
+        rating: "good",
+        value: 1200,
+      }),
+      expect.any(Number),
+    );
+    expect(faroClientMock.client.setUserContext).toHaveBeenNthCalledWith(
+      2,
+      null,
+    );
     expect(requestContext.correlationId).toBe("req-123");
     expect(requestContext.headers).toMatchObject({
       [FRONTEND_OBSERVABILITY_HEADER_NAMES.correlationId]: "req-123",
@@ -120,5 +196,59 @@ describe("frontend observability runtime", () => {
       [FRONTEND_OBSERVABILITY_HEADER_NAMES.route]: "/profile",
       [FRONTEND_OBSERVABILITY_HEADER_NAMES.operation]: "get-current-user",
     });
+  });
+
+  it("normalizes resource attributes into runtime metadata", () => {
+    const runtime = createFrontendObservability({
+      app: {
+        name: "frontend-web",
+        environment: "rc",
+        release: "2026.04.06",
+      },
+      enabled: true,
+      ingest: {
+        endpoint: " https://example.test/collect ",
+        transport: " faro_fetch ",
+        dataset: " frontend-web ",
+        attributes: {
+          region: " eu ",
+          " ": "ignored",
+        },
+      },
+    });
+
+    expect(runtime.getMetadata()).toEqual({
+      appName: "frontend-web",
+      environment: "rc",
+      release: "2026.04.06",
+      enabled: true,
+      ingestEndpoint: "https://example.test/collect",
+      ingestTransport: "faro_fetch",
+      ingestDataset: "frontend-web",
+      resourceAttributes: {
+        region: "eu",
+      },
+    });
+    expect(faroClientMock.createFaroClient).toHaveBeenCalledWith(
+      {
+        app: {
+          name: "frontend-web",
+          environment: "rc",
+          release: "2026.04.06",
+        },
+        ingest: {
+          endpoint: "https://example.test/collect",
+          transport: "faro_fetch",
+          dataset: "frontend-web",
+          attributes: {
+            region: "eu",
+          },
+        },
+        resourceAttributes: {
+          region: "eu",
+        },
+      },
+      null,
+    );
   });
 });

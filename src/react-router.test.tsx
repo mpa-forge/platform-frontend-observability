@@ -3,8 +3,26 @@
 import { render } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { useEffect } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, useNavigate } from "react-router-dom";
+
+const faroClientMock = vi.hoisted(() => {
+  const client = {
+    setUserContext: vi.fn(),
+    trackPageView: vi.fn(),
+    captureError: vi.fn(),
+    reportWebVital: vi.fn(),
+  };
+
+  return {
+    client,
+    createFaroClient: vi.fn(() => client),
+  };
+});
+
+vi.mock("./internal/faro-client", () => ({
+  createFaroClient: faroClientMock.createFaroClient,
+}));
 
 import { FrontendObservabilityProvider } from "./react";
 import { useReactRouterPageViews } from "./react-router";
@@ -30,6 +48,13 @@ function Tracker({ nextPath }: TrackerProps) {
 }
 
 describe("react-router adapter", () => {
+  beforeEach(() => {
+    faroClientMock.createFaroClient.mockClear();
+    Object.values(faroClientMock.client).forEach((mockFn) =>
+      mockFn.mockReset(),
+    );
+  });
+
   it("tracks route changes through the shared runtime", async () => {
     const emit = vi.fn();
     const runtime = createFrontendObservability({
@@ -59,5 +84,6 @@ describe("react-router adapter", () => {
       type: "page_view",
       page: { path: "/profile?tab=security" },
     });
+    expect(faroClientMock.client.trackPageView).toHaveBeenCalled();
   });
 });

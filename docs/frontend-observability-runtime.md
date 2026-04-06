@@ -9,6 +9,10 @@ applications:
 - optional `frontend-web` helpers that fit the current auth and protected API
   client boundaries
 
+Under the hood, enabled telemetry is implemented with the Grafana Faro Web SDK.
+Applications still depend on this package's platform contract rather than
+initializing Faro directly.
+
 ## Core Runtime
 
 Use the core package entrypoint when you want a browser-safe runtime with no
@@ -38,8 +42,12 @@ Notes:
 
 - the runtime accepts only browser-safe config
 - do not pass secrets, tokens, or prebuilt auth headers
+- the wrapper does not expose or require Faro-specific bootstrap in app code
 - mutable user context is updated after startup through runtime methods or the
   optional helpers below
+- when an ingest endpoint is configured, the wrapper initializes Faro transport
+  internally; when it is omitted, the runtime still behaves consistently and
+  remains safe for local development and tests
 
 ## React Bootstrap
 
@@ -103,6 +111,21 @@ const requestContext = applyRequestCorrelationHeaders(req.header, runtime, {
 That keeps correlation-header construction out of feature modules while staying
 provider-neutral.
 
+## Wrapper Decisions
+
+Current implementation decisions for the Faro-backed architecture:
+
+- Faro surface area: the package does not expose the raw Faro client or ask
+  consumer apps to import Faro setup primitives. Advanced provider behavior can
+  be added later through new package-owned APIs if there is a proven need.
+- Backend flexibility: the public contract stays provider-neutral, but the
+  current implementation intentionally standardizes on Faro rather than carrying
+  a second backend abstraction before another backend is needed.
+- `frontend-web` contract impact: no consumer-facing contract change is
+  required for the current adapters. Route tracking, auth-driven user-context
+  sync, and request-correlation helpers continue to flow through the existing
+  package entrypoints.
+
 ## Browser Config Contract
 
 Recommended browser-exposed variables for the first consumer:
@@ -117,4 +140,4 @@ Recommended browser-exposed variables for the first consumer:
 
 Do not commit or embed provider secrets in frontend code or `.env.example`.
 The shared package intentionally does not accept header or token secrets in its
-config contract.
+config contract, including Faro API keys.
