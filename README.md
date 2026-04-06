@@ -27,6 +27,13 @@ Primary package entrypoints:
 - `@mpa-forge/platform-frontend-observability/frontend-web`: optional helpers
   tailored to the current `frontend-web` auth and protected-request boundaries
 
+Published package contract:
+
+- versioned npm package: `@mpa-forge/platform-frontend-observability`
+- registry: `https://npm.pkg.github.com`
+- built artifacts: `dist/`
+- consumer auth: `GITHUB_PACKAGES_TOKEN`
+
 ## Toolchain
 
 - GNU Make (or a compatible `make` implementation) and a bash-compatible shell
@@ -50,6 +57,16 @@ Run the setup commands from the repository root:
 
 Bootstrap installs the pinned Bun dependencies and Python tooling for hooks.
 
+## Build And Package
+
+- Build the published artifact: `make build`
+- Validate the packaged file set: `make package-check`
+- The package publishes from `dist/` and exposes built subpath entrypoints for
+  the core runtime, React helpers, React Router helpers, and `frontend-web`
+  helpers.
+- The repo commits `.npmrc` scope mapping for GitHub Packages. Publishing and
+  install auth are provided through `GITHUB_PACKAGES_TOKEN`.
+
 ## Lint and Format
 
 - Install git hooks: `make precommit-install`
@@ -63,6 +80,8 @@ Bootstrap installs the pinned Bun dependencies and Python tooling for hooks.
 Package integration notes:
 
 - [docs/frontend-observability-runtime.md](docs/frontend-observability-runtime.md)
+- [docs/frontend-package-release.md](docs/frontend-package-release.md)
+- [docs/frontend-package-consumer-auth.md](docs/frontend-package-consumer-auth.md)
 
 ## Status
 
