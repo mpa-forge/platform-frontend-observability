@@ -18,7 +18,6 @@ function createRuntime() {
       environment: "rc",
       release: "2026.04.06",
     },
-    enabled: true,
   });
 }
 

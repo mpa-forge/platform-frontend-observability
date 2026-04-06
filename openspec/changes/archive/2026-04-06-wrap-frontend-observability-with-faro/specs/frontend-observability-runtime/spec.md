@@ -1,12 +1,4 @@
-# frontend-observability-runtime Specification
-
-## Purpose
-
-Define the canonical shared frontend observability runtime contract for browser
-applications, including stable initialization, browser telemetry hooks,
-frontend-web-friendly adapters, and outbound request correlation helpers.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Browser apps initialize observability through one shared runtime
 

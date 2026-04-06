@@ -1,3 +1,5 @@
+import { createFaroClient } from "./internal/faro-client";
+
 export const FRONTEND_OBSERVABILITY_HEADER_NAMES = {
   correlationId: "x-platform-correlation-id",
   app: "x-platform-client-app",
@@ -13,6 +15,8 @@ const FORBIDDEN_INGEST_KEYS = new Set([
   "authorization",
   "authorizationHeader",
   "authHeader",
+  "apiKey",
+  "apikey",
   "token",
   "secret",
 ]);
@@ -70,6 +74,7 @@ export type FrontendObservabilityMetadata = {
   ingestEndpoint?: string;
   ingestTransport?: string;
   ingestDataset?: string;
+  resourceAttributes?: FrontendObservabilityAttributes;
 };
 
 export type FrontendObservabilityPageViewInput = {
@@ -340,7 +345,9 @@ class DefaultFrontendObservabilityRuntime
   private readonly emit?: FrontendObservabilityEmitter;
   private readonly now: () => Date;
   private readonly createId: () => string;
+  private readonly resourceAttributes?: FrontendObservabilityAttributes;
   private userContext: FrontendObservabilityUserContext | null;
+  private readonly faroClient;
 
   readonly isEnabled: boolean;
 
@@ -353,28 +360,50 @@ class DefaultFrontendObservabilityRuntime
       ingestEndpoint: config.ingest?.endpoint,
       ingestTransport: config.ingest?.transport,
       ingestDataset: config.ingest?.dataset,
+      resourceAttributes: normalizeAttributes(config.ingest?.attributes),
     };
     this.emit = config.emit;
     this.now = config.now;
     this.createId = config.createId;
+    this.resourceAttributes = this.metadata.resourceAttributes;
     this.userContext = config.initialUserContext;
     this.isEnabled = config.enabled;
+    this.faroClient = config.enabled
+      ? createFaroClient(
+          {
+            app: config.app,
+            ingest: config.ingest,
+            resourceAttributes: this.resourceAttributes,
+          },
+          this.userContext,
+        )
+      : null;
   }
 
   getMetadata() {
-    return { ...this.metadata };
+    return {
+      ...this.metadata,
+      resourceAttributes: normalizeAttributes(this.metadata.resourceAttributes),
+    };
   }
 
   getUserContext() {
-    return this.userContext ? { ...this.userContext } : null;
+    return this.userContext
+      ? {
+          ...this.userContext,
+          attributes: normalizeAttributes(this.userContext.attributes),
+        }
+      : null;
   }
 
   setUserContext(userContext: FrontendObservabilityUserContext | null) {
     this.userContext = normalizeUserContext(userContext);
+    this.faroClient?.setUserContext(this.userContext);
   }
 
   clearUserContext() {
     this.userContext = null;
+    this.faroClient?.setUserContext(null);
   }
 
   trackPageView(pageView: FrontendObservabilityPageViewInput) {
@@ -391,6 +420,8 @@ class DefaultFrontendObservabilityRuntime
       type: "page_view",
       page: normalizedPageView,
     });
+
+    this.faroClient?.trackPageView(normalizedPageView, this.now().getTime());
   }
 
   captureError(input: FrontendObservabilityErrorInput) {
@@ -401,19 +432,25 @@ class DefaultFrontendObservabilityRuntime
       error: normalizedError,
     });
 
+    this.faroClient?.captureError(normalizedError, this.now().getTime());
+
     return normalizedError;
   }
 
   reportWebVital(metric: FrontendObservabilityWebVitalMetric) {
+    const normalizedMetric = {
+      ...metric,
+      name: trimRequired(metric.name, "metric.name"),
+      rating: metric.rating ?? "unknown",
+      attributes: normalizeAttributes(metric.attributes),
+    };
+
     this.emitEvent({
       type: "web_vital",
-      metric: {
-        ...metric,
-        name: trimRequired(metric.name, "metric.name"),
-        rating: metric.rating ?? "unknown",
-        attributes: normalizeAttributes(metric.attributes),
-      },
+      metric: normalizedMetric,
     });
+
+    this.faroClient?.reportWebVital(normalizedMetric, this.now().getTime());
   }
 
   createRequestContext(input: FrontendObservabilityRequestContextInput = {}) {
