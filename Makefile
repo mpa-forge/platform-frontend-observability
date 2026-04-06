@@ -4,7 +4,7 @@ BUN ?= bun
 NODE_VERSION := 24.13.1
 BUN_VERSION := 1.3.11
 
-.PHONY: help bootstrap doctor sync-agent-skills sync-agent-skills-check install-tools check-tools print-toolchain install-dev-tools precommit-install precommit-run lint test format format-check repo-lint repo-test repo-format repo-format-check
+.PHONY: help bootstrap doctor sync-agent-skills sync-agent-skills-check install-tools check-tools print-toolchain install-dev-tools precommit-install precommit-run build package-check lint test format format-check repo-build repo-package-check repo-lint repo-test repo-format repo-format-check
 
 help:
 	@echo "Targets:"
@@ -18,6 +18,8 @@ help:
 	@echo "  install-dev-tools Install Python and Bun development tooling"
 	@echo "  precommit-install Install git pre-commit hooks"
 	@echo "  precommit-run     Run the configured pre-commit checks on all files"
+	@echo "  build             Build the publishable package into dist/"
+	@echo "  package-check     Validate the publishable package artifact with a dry run"
 	@echo "  lint              Run repo lint checks"
 	@echo "  test              Run repo tests"
 	@echo "  format            Apply repo formatting"
@@ -102,9 +104,19 @@ lint: repo-lint
 
 test: repo-test
 
+build: repo-build
+
+package-check: repo-package-check
+
 format: repo-format
 
 format-check: repo-format-check
+
+repo-build:
+	$(BUN) run build
+
+repo-package-check:
+	$(BUN) run package:check
 
 repo-lint:
 	$(BUN) run lint
