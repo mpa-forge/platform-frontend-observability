@@ -13,7 +13,7 @@ For local installs in PowerShell:
 
 ```powershell
 $env:GITHUB_PACKAGES_TOKEN = (gh auth token).Trim()
-bun add @mpa-forge/platform-frontend-observability@0.1.0
+bun add @mpa-forge/platform-frontend-observability@0.1.1
 ```
 
 Requirements:
