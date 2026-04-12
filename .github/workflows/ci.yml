@@ -14,7 +14,9 @@ permissions:
 jobs:
   ci:
     uses: mpa-forge/.github/.github/workflows/reusable-ci-frontend.yml@main
-    secrets: inherit
+    secrets:
+      GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     with:
       working-directory: "."
       node-version: "24.13.1"
